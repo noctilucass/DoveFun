@@ -1,54 +1,191 @@
-# DoveFun
+readme_content = """# DoveFun
 
-<!-- badges: start -->
-<!-- badges: end -->
+<div align="center">
 
-`DoveFun` is an R package for working with time series and event-based analyses in marine datasets, with a focus on workflows relevant to environmental and biological research. A good package README should include a short package description, installation instructions, and a basic usage example, which is the standard structure encouraged in R package workflows and package templates.[1][2][3]
+**Auxiliar functions for everyday work made to streamline R work for the Dove Marine Laboratory**
 
-## Installation
+[![R-CMD-check](https://github.com/noctilucass/DoveFun/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/noctilucass/DoveFun/actions)
+[![CRAN status](https://www.r-pkg.org/badges/version/DoveFun)](https://CRAN.R-project.org/package=DoveFun)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-You can install the development version of `DoveFun` from GitHub with:
+</div>
+
+---
+
+## 📖 Overview
+
+`DoveFun` is a collection of helper functions designed to streamline R workflows for researchers at **Dove Marine Laboratory**. The package provides utilities for:
+
+- **Time series visualization** with date-based shading
+- **Synthetic data generation** for environmental simulations (e.g., temperature, tides)
+- **Oceanographic calculations** for oxygen saturation analysis
+
+These functions support everyday marine research tasks, particularly for intertidal chamber experiments and dissolved oxygen analysis.
+
+---
+
+## 🚀 Installation
+
+### From GitHub
 
 ```r
-# install.packages("remotes")
-remotes::install_github("YOUR_GITHUB_USERNAME/DoveFun")
+install.packages("devtools")
+devtools::install_github("noctilucass/DoveFun")
 ```
 
-R package READMEs commonly include GitHub installation instructions for development versions, typically using `remotes::install_github()` or similar tools.[4][5][2]
+### Load the package
 
-## Overview
+```r
+library(DoveFun)
+```
 
-The repository root should contain a `README.md` file so GitHub can render it on the project home page, and strong READMEs usually state what the package does, who it is for, and how to get started.[6] `DoveFun` can be documented here as a package designed to support reproducible analyses of marine time series, event windows, and related research workflows.
+---
 
-## Example
+## 📦 Functions
 
-A minimal README example is recommended for R packages, showing how to load the package and run one simple function or workflow.[1][2]
+### 1. `shadow()` - Date-based Shading for ggplot2
+
+Creates a `geom_rect` layer to shade a specific date on a time series plot. Useful for highlighting experimental periods, events, or conditions.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `date` | Date vector | Date in `YYYY-MM-DD` format |
+| `filling` | Character | Fill color for the rectangle |
+
+**Returns:** A `ggplot2` layer (`geom_rect`)
+
+**Example:**
+
+```r
+library(ggplot2)
+library(DoveFun)
+
+# Create a time series plot
+ggplot(data = your_data, aes(x = Time, y = Temperature)) +
+  geom_line() +
+  shadow(date = "2024-03-15", filling = "red") +  # Shade specific date
+  theme_minimal()
+```
+
+---
+
+### 2. `control_IC()` - Synthetic Fluctuation Time Series
+
+Generates a cyclic sequence of values that fluctuate daily around an average value. Ideal for simulating environmental sensor data (temperature, tides, etc.) with regular daily cycles.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_rows` | Integer | — | Total number of values to generate (positive integer) |
+| `amplitude` | Numeric | `5` | Magnitude of fluctuation around average (non-negative) |
+| `avg_value` | Numeric | `20` | Central mean value around which fluctuation occurs |
+| `rows_per_day` | Integer | `24` | Observations per day (e.g., 24 for hourly) |
+| `random` | Logical | `FALSE` | Add uniform random noise if `TRUE` |
+| `seed` | Integer | `NULL` | Random seed for reproducibility (when `random = TRUE`) |
+
+**Returns:** Character vector of length `n_rows` with formatted fluctuation sequence (rounded to 1 decimal, multiplied by 10, zero-padded to 3 digits)
+
+**Details:**
+
+The function creates a daily fluctuation pattern:
+1. Increasing sequence from `avg_value - amplitude` to `avg_value + amplitude`
+2. Decreasing sequence back to `avg_value - amplitude`
+
+These sequences form a full daily cycle and repeat until `n_rows` values are generated.
+
+**Examples:**
+
+```r
+# Generate deterministic daily fluctuation (48 hourly values)
+seq1 <- control_IC(n_rows = 48)
+
+# Generate noisy fluctuation with custom parameters
+seq2 <- control_IC(
+  n_rows = 100,
+  amplitude = 3,
+  avg_value = 15,
+  random = TRUE,
+  seed = 123
+)
+
+# Different temporal resolution (12 observations/day)
+seq3 <- control_IC(
+  n_rows = 60,
+  rows_per_day = 12
+)
+```
+
+---
+
+### 3. `calcular_saturacion_O2()` - Oxygen Saturation Percentage
+
+Computes oxygen saturation (%) from dissolved oxygen measurements using **TEOS-10 solubility equations** and seawater density. Essential for oceanographic and marine biology research.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `data` | Data frame | — | Contains temperature, DO, and time columns |
+| `salinidad` | Numeric | `33` | Practical salinity (PSU) |
+| `temp_col` | Character | `"Temp"` | Column name for temperature (°C) |
+| `do_col` | Character | `"DO"` | Column name for dissolved oxygen (mg/L) |
+| `time_col` | Character | `"Time"` | Column name for datetime object |
+| `day_col` | Character | `"Exp_Day"` | Column name for experimental day variable |
+
+**Returns:** List containing:
+
+| Component | Description |
+|-----------|-------------|
+| `O2_umol_kg` | Oxygen solubility (μmol/kg) |
+| `O2_mg_L` | Oxygen solubility (mg/L) |
+| `data_mod` | Original data with added `porc_saturacion` column |
+| `resumen` | Summary by day and hour (mean ± SD) |
+
+**Method:**
+
+1. Oxygen solubility using TEOS-10 (μmol/kg) via `gsw_O2sol_SP_pt()`
+2. Seawater density calculation via `oce::swRho()`
+3. Conversion to mg/L using molecular weight of O₂ (31.998 g/mol)
+4. Saturation percentage: `100 × DO / O2_sat_mgL`
+5. Aggregation by day and hour (mean and standard deviation)
+
+**Dependencies:**
+
+- `gsw` - TEOS-10 thermodynamic equations
+- `oce` - Oceanographic data analysis
+- `dplyr` - Data manipulation
+- `lubridate` - DateTime handling
+- `magrittr` - Pipe operator
+
+**Example:**
 
 ```r
 library(DoveFun)
 
-# Example workflow here
-# result <- your_function(your_data)
-# head(result)
+# Calculate oxygen saturation
+result <- calcular_saturacion_O2(
+  data = df,
+  salinidad = 33,
+  temp_col = "Temp",
+  do_col = "DO",
+  time_col = "Time",
+  day_col = "Exp_Day"
+)
+
+# Access results
+result$O2_umol_kg      # Oxygen solubility (μmol/kg)
+result$O2_mg_L         # Oxygen solubility (mg/L)
+result$data_mod        # Data with saturation column
+result$resumen         # Summary by day/hour
 ```
 
-Replace the example above with one short, real example from the package, ideally using one exported function that shows the package’s main purpose.[1][2]
+---
+## 🔗 References
 
-## Package structure
-
-Typical package repositories expose core package files such as `DESCRIPTION`, `NAMESPACE`, `R/`, and `man/`, which helps users recognize the project as a standard R package and orient themselves in the source tree.[7][6]
-
-## Development notes
-
-If you maintain the README from `README.Rmd`, it should be rendered regularly so the generated `README.md` stays up to date with the source file.[1][8] In common R package workflows, `usethis::use_readme_rmd()` is used to create this structure and `devtools::build_readme()` can be used to update the rendered markdown.[1][9]
-
-## Next edits to make
-
-- Replace `YOUR_GITHUB_USERNAME` with your actual GitHub username.
-- Add a one-sentence description of what `DoveFun` does.
-- Replace the example block with a real exported function from the package.
-- Add badges later if you want version, R-CMD-check, or license indicators.
-
-## License
-
-Add your package license here once you decide how you want to distribute the code. Many GitHub READMEs include the license as a short final section because it is one of the expected repository basics.[6]
+- **TEOS-10**: Thermodynamic Equation of Seawater 2010 (IO-PSOG)
+- **gsw package**: Gross, T., et al. (2014). `gsw`: Gibbs Scientific Utilities for seawater
+- **oce package**: Kirchwood, D., & Delrue, R. (2012). `oce`: Analysis of Oceanographic Data
+- **heatwaveR**; Hobday, A.J. et al. (2016). A hierarchical approach to defining marine heatwaves
