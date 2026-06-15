@@ -397,7 +397,6 @@ run_mhw_analysis <- function(tab,
 
   lolli <- lolli_plot(mhw, metric = intensity_max)
 
-  combined_events_plot <- ggarrange(event_plot, lolli, ncol = 1)
 
   # ---------------------------
   # 4. Expandir eventos
@@ -537,7 +536,8 @@ run_mhw_analysis <- function(tab,
     mhw_ts = mhw_ts,
     mhw_season = mhw_season,
     plots = list(
-      events = combined_events_plot,
+      event_plot = event_plot,
+      lolli_plot = lolli,
       scatter = combined_scatter,
       seasonal = p3
     )
