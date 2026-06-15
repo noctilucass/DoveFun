@@ -1,17 +1,3 @@
-readme_content = """# DoveFun
-
-<div align="center">
-
-**Auxiliar functions for everyday work made to streamline R work for the Dove Marine Laboratory**
-
-[![R-CMD-check](https://github.com/noctilucass/DoveFun/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/noctilucass/DoveFun/actions)
-[![CRAN status](https://www.r-pkg.org/badges/version/DoveFun)](https://CRAN.R-project.org/package=DoveFun)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-
-</div>
-
----
-
 ## 📖 Overview
 
 `DoveFun` is a collection of helper functions designed to streamline R workflows for researchers at **Dove Marine Laboratory**. The package provides utilities for:
