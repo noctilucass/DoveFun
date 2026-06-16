@@ -349,9 +349,8 @@ run_mhw_analysis <- function(tab,
   #' @importFrom heatwaveR lolli_plot event_line ts2clm detect_event
   #' @importFrom magrittr %>%
 
-  # ---------------------------
-  # 0. Preparación inicial
-  # ---------------------------
+  # ---- 1. Tidy ----
+
   tab$t <- as.POSIXct(tab$t)
 
   # Detectar resolución temporal automáticamente
@@ -359,9 +358,8 @@ run_mhw_analysis <- function(tab,
   is_daily <- dt >= 86400
   time_scale <- ifelse(is_daily, 1, 24)
 
-  # ---------------------------
-  # 1. Preparación de datos
-  # ---------------------------
+  # ---- 2. data prep ----
+
   ntab <- tab %>%
     group_by(t) %>%
     summarise(
@@ -374,9 +372,8 @@ run_mhw_analysis <- function(tab,
 
   ntab$t <- as.Date(ntab$t)
 
-  # ---------------------------
-  # 2. Climatología y eventos
-  # ---------------------------
+  # ---- 3. MHW analysis ----
+
   ts  <- ts2clm(ntab, climatologyPeriod = c(clim_start, clim_end))
   mhw <- detect_event(ts, categories = TRUE, climatology = TRUE)
 
@@ -387,9 +384,8 @@ run_mhw_analysis <- function(tab,
     arrange(-intensity_max) %>%
     head(5)
 
-  # ---------------------------
-  # 3. Plots iniciales
-  # ---------------------------
+  # ---- 4. Plots ----
+
   event_plot <- event_line(
     mhw, spread = 2000, metric = intensity_max,
     start_date = clim_start, end_date = clim_end
@@ -398,9 +394,8 @@ run_mhw_analysis <- function(tab,
   lolli <- lolli_plot(mhw, metric = intensity_max)
 
 
-  # ---------------------------
-  # 4. Expandir eventos
-  # ---------------------------
+  # ---- 5. adding season ----
+
   mhw[["event"]] <- mhw[["event"]] %>%
     select(-season) %>%   # remove old season completely
     mutate(
@@ -421,9 +416,8 @@ run_mhw_analysis <- function(tab,
       event_no = .$event_no
     ))
 
-  # ---------------------------
-  # 5. Merge con serie original
-  # ---------------------------
+  # ---- 6. Binding DF ----
+
   mhw_ts <- tab %>%
     left_join(mhw_days, by = c("t" = "date")) %>%
     filter(!is.na(event_no))
@@ -432,9 +426,13 @@ run_mhw_analysis <- function(tab,
 
   clim <- mhw[["climatology"]]
 
+  # ---- 7. ts-thresh (temp anom) ----
+
   mhw_ts <- mhw_ts %>%
     left_join(clim[, c("t", "seas")], by = "t") %>%
-    mutate(temp_anom = sstmean - seas)
+    mutate(temp_anom = sstmean - thresh)
+
+  # ---- 8. tidy ----
 
   # tiempo desde inicio (en días)
   mhw_ts <- mhw_ts %>%
